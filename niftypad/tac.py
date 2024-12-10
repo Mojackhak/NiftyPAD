@@ -3,7 +3,9 @@ __email__ = "jieqing.jiao@gmail.com"
 
 from . import models
 from . import kt
+import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class TAC:
@@ -120,6 +122,63 @@ class Ref:
                 self.auto_find_fill_in_seconds()
         interp_method()
 
+    def plot_tac(self, method_interp, save_fig=None):
+        # Switch-like behavior using a dictionary
+        interp_data = {
+            'interp_1': self.inputf1,
+            'interp_1cubic': self.inputf1cubic,
+            'exp1': self.inputf1_exp1,
+            'exp2': self.inputf1_exp2,
+            'exp_am': self.inputf1_exp_am,
+            'feng_srtm': self.inputf1_feng_srtm
+        }.get(method_interp)
 
+        # Raise an error if method_interp is not valid
+        if interp_data is None:
+            raise ValueError(f"Invalid method_interp '{method_interp}'. Choose from: {list(interp_data.keys())}.")
+
+        # Raise an error if the selected data is empty
+        if len(interp_data) == 0:
+            raise ValueError(f"The data for method '{method_interp}' is empty. Cannot plot.Calculate with '{method_interp}' first.")
+
+        # Compute the derivative of the TAC (approximated by the finite difference method)
+        tac_derivative = np.gradient(interp_data)
+
+        # Create a figure and axis
+        fig, ax1 = plt.subplots(figsize=(10, 8))
+
+        # Plot the interpolated TAC and original TAC on the left y-axis
+        ax1.plot(interp_data, label='Interpolated TAC (line)', linestyle='-', marker='')
+        ax1.scatter(self.dt.mean(axis=0), self.tac, color='red', label='Original TAC (points)')
+
+        # Set labels and legend for the left y-axis
+        ax1.set_xlabel("Time (arbitrary units)")
+        ax1.set_ylabel("TAC", color='blue')
+        ax1.tick_params(axis='y', labelcolor='blue')
+        ax1.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0))  
+        
+        # Create a twin y-axis for the derivative of TAC
+        ax2 = ax1.twinx()
+        ax2.plot(tac_derivative, label="Derivative of TAC", linestyle='--', color='green')
+
+        # Set labels and legend for the right y-axis
+        ax2.set_ylabel("Derivative of TAC", color='green')
+        ax2.tick_params(axis='y', labelcolor='green')
+        ax2.legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))  
+
+
+        # Display the plot
+        plt.title("TAC and its Derivative")
+        
+        # Save the figure if save_fig is specified
+        if save_fig:
+            if not os.path.isdir(save_fig):
+                raise ValueError(f"The path '{save_fig}' is not a valid directory.")
+            save_path = os.path.join(save_fig, f'TAC_{method_interp}.svg')
+            plt.savefig(save_path, format='svg')
+            print(f"Figure saved to: {save_path}")
+
+        # Display the plot
+        plt.show()
 
 
