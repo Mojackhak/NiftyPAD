@@ -7,6 +7,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import numpy as np
+import pandas as pd
 import nibabel as nib
 import subprocess
 from niftypad.tac import Ref
@@ -47,6 +48,9 @@ vol_param_folder = os.path.join(wd, "vol-param")
 
 os.makedirs("vol-param-pre", exist_ok=True)
 vol_param_pre_folder = os.path.join(wd, "vol-param-pre")
+
+os.makedirs("params", exist_ok=True)
+param_folder = os.path.join(wd, "params")
 
 # #%% Paths provided in the query
 # dicom_folder = r"E:\Chen Lab\Data\NHP\Image\M4\postmodel\200165_PET\200165-M4_preop_PET_2024-09-08\PET-CT\4660"
@@ -431,8 +435,9 @@ img_data_mask = img_mask.get_fdata()
 mask_brain = np.argwhere(img_data_mask > 0)
 
 # %%
-models = ['srtm_k2p', 'srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm_k2p']
+# models = ['srtm_k2p', 'srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm_k2p']
 # models = ['srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm_k2p']
+models = ['srtm', 'srtmb_basis', 'mrtm']
 km_outputs = ['r1', 'k2', 'k2p', 'BP'] # do not add tacf here, it will be saved as 'fit'
 
 save_base = os.path.join(vol_param_folder, os.path.basename(os.path.splitext(img_pet.get_filename())[0]))
@@ -452,11 +457,67 @@ for model_name in models:
     nib.save(nib.Nifti1Image(pet_image_fit, img_pet.affine), save_base +
              '_' + model_name + '_' + 'fit' + save_ext)
 
-# %% calculate the mean params of the ROIs
-# load the parametric images
-nigra_r_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\NigraRmask.nii.gz"
-nigra_l_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\NigraLmask.nii.gz"
-caudate_r_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\CaudateRmask.nii.gz"
-caudate_l_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\CaudateLmask.nii.gz"
+#%% set the params img path
+srtmb_asl_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtmb_asl_basis_bp.nii.gz')
+srtmb_k2p_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtmb_k2p_basis_bp.nii.gz')
+mrtm_k2p_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp.nii.gz')
+srtm_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtm_bp.nii.gz')
+srtm_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtm_bp.nii.gz')
+mrtm_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_bp.nii.gz')
 
-# %% 
+model_list_files = [srtmb_asl_basis_bp_files, srtmb_k2p_basis_bp_files, mrtm_k2p_basis_bp_files, 
+                    srtm_bp_files, srtm_basis_bp_files, mrtm_bp_files]
+
+#%% set the paths of roi mask files
+
+nigra_r_mask = os.path.join(wd, r'resample\NigraRmask.nii.gz')
+nigra_l_mask = os.path.join(wd, r'resample\NigraLmask.nii.gz')
+
+caudate_r_mask = os.path.join(wd, r'resample\CaudateRmask.nii.gz')
+caudate_l_mask = os.path.join(wd, r'resample\CaudateLmask.nii.gz')
+
+putamen_r_mask = os.path.join(wd, r'resample\PutamenRmask.nii.gz')
+putamen_l_mask = os.path.join(wd, r'resample\PutamenLmask.nii.gz')
+
+accumbens_r_mask = os.path.join(wd, r'resample\AccumbensRmask.nii.gz')
+accumbens_l_mask = os.path.join(wd, r'resample\AccumbensLmask.nii.gz')
+
+striatumdorsal_r_mask = os.path.join(wd, r'resample\StriatumDarsalRmask.nii.gz')
+striatumdorsal_l_mask = os.path.join(wd, r'resample\StriatumDarsalLmask.nii.gz')
+
+striatumdorsalNAc_r_mask = os.path.join(wd, r'resample\NigraStriatumNAcRmask.nii.gz')
+striatumdorsalNAc_l_mask = os.path.join(wd, r'resample\NigraStriatumNAcLmask.nii.gz')
+
+roi_list_files = [nigra_r_mask, nigra_l_mask, caudate_r_mask, caudate_l_mask, putamen_r_mask, putamen_l_mask,
+                  accumbens_r_mask, accumbens_l_mask, striatumdorsal_r_mask, striatumdorsal_l_mask,
+                  striatumdorsalNAc_r_mask, striatumdorsalNAc_l_mask]
+
+# %% calculate the mean params of the ROIs
+bp_list = {}
+
+for model_file_f in model_list_files: # f means final
+    img_model_f = nib.load(model_file_f)
+    img_data_model_f = img_model_f.get_fdata()
+    # Ensure the model file key exists in the dictionary
+    model_name = os.path.basename(model_file_f)
+    if model_name not in bp_list:
+        bp_list[model_name] = {}    
+    for roi_f_file in roi_list_files: # f means final
+        img_roi_f = nib.load(roi_f_file)
+        img_data_roi_f = img_roi_f.get_fdata()
+        regions_data, regions_label = extract_regional_values_image_data(img_data_model_f, img_data_roi_f)
+        bp_data = regions_data[1] # regions_label=1
+        bp_mean = np.mean(bp_data)
+
+        roi_name = os.path.basename(roi_f_file)
+        bp_list[model_name][roi_name] = bp_mean        
+
+#%% Save the params to csv files
+df_bp = pd.DataFrame.from_dict(bp_list, orient='index')
+df_bp.index.name = 'Model_Name'  # Set index name
+df_bp.columns.name = 'ROI_Name'  # Set columns name
+
+# Save the DataFrame to CSV
+df_savename = os.path.join(param_folder, 'bp_list.csv')
+df_bp.to_csv(df_savename)
+
