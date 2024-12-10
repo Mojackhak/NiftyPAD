@@ -15,6 +15,7 @@ from niftypad.image_process.parametric_image import image_to_parametric
 from niftypad.models import get_model_inputs
 from niftypad.image_process.regions import extract_regional_values_image_data
 from niftypad.image_process.transform_image import dicom4_to_nifti3, load_4D
+import niftypad.linearity as li
 
 #%% file structure
 wd = r"F:\Data\Image\NHP\NiftyPAD\M4"
@@ -38,8 +39,14 @@ tac_ref_folder = os.path.join(wd, "tac-ref")
 os.makedirs("tac-roi", exist_ok=True)
 tac_roi_folder = os.path.join(wd, "tac-roi")
 
+os.makedirs("linearity", exist_ok=True)
+linearity = os.path.join(wd, "linearity")
+
 os.makedirs("vol-param", exist_ok=True)
 vol_param_folder = os.path.join(wd, "vol-param")
+
+os.makedirs("vol-param-pre", exist_ok=True)
+vol_param_pre_folder = os.path.join(wd, "vol-param-pre")
 
 # #%% Paths provided in the query
 # dicom_folder = r"E:\Chen Lab\Data\NHP\Image\M4\postmodel\200165_PET\200165-M4_preop_PET_2024-09-08\PET-CT\4660"
@@ -73,7 +80,7 @@ dicom4_to_nifti3(dicom_folder, output_base)
 # img = nib.load(pet_file)
 # pet_image = img.get_fdata()
 
-pet_folder = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\Scene\M4-Postop-PET-DTBZ-CTAC-Dynamic"
+pet_folder = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\M4-Postop-PET-DTBZ-CTAC-Dynamic"
 img_data_pet, img_pet = load_4D(pet_folder) # img_data is tensor of shape (x, y, z, t), img is nibabel image
 
 
@@ -101,7 +108,7 @@ dt = np.array([[0, 30, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 900, 1200
 
 #%% Way2: use the mask file to extract the ref region first then get the TAC
 # ref mask file
-ref_file = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\Scene\OccipitalMask.nii.gz"
+ref_file = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\CerebellumMask.nii.gz"
 img_ref = nib.load(ref_file)
 img_data_ref = img_ref.get_fdata()
 
@@ -142,12 +149,13 @@ ref.plot_tac('feng_srtm', tac_ref_folder)
 
 #%%
 # choose the best interpolation method!
-inputf1 = ref.inputf1_exp_am
+input_ref = ref.inputf1_exp_am
 
 #%% Read the ROI mask file
-roi_file = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\Scene\PutamenRmask.nii.gz"
+roi_file = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\PutamenRmask.nii.gz"
 img_roi = nib.load(roi_file)
 img_data_roi = img_roi.get_fdata()
+mask_roi = np.argwhere(img_data_roi > 0)
 
 #%% get the TAC of the ROI
 
@@ -174,10 +182,30 @@ roi.plot_tac('exp2', tac_roi_folder)
 roi.plot_tac('exp_am', tac_roi_folder)
 # roi.plot_tac('feng_srtm', tac_roi_folder)
 
+#%%
+# choose the best interpolation method!
+input_roi = roi.inputf1_exp_am
+
+#%% judge the linear phase of models
+t = np.arange(0, len(input_roi))
+# t_trunc to truncate the initial rising part of the TAC
+li.logan_linear_phase(input_roi, input_ref, t, t_trunc=(200, np.inf), save_dir=linearity)
+li.mrtm_linear_phase(input_roi, input_ref, t, t_trunc=(200, np.inf), save_dir=linearity)
+
 
 #%% set the start and end time of the linear phase of the Logan plot
-start_t = 500
-end_t = None
+start_l = 600
+end_l = None
+
+start_l2 = 600
+end_l2 = None
+
+start_m = 700
+end_m = 3100
+
+start_m2 = 700
+end_m2 = 3100
+
 
 #%%
 # k2p is the tissue-to-plasma clearance 𝑘2′ of the reference tissue of the parent radioligand in dynamic PET imaging (𝑘′2) .
@@ -189,9 +217,8 @@ end_t = None
 # reduces the variance of parameter estimates (Wu & Carson, 2002; Ichise et al., 2003; Endres et al., 2011).
 
 # REF: https://doi.org/10.1097/01.WCB.0000085441.37552.CA. This paper provides a way to estimate k2p.
-# Run MRTM with the reference region TAC to get the k2 value of the reference region.
-# averaging of several k′2 samples from high-BP ROIs might be required to minimize the variability of k′2 estimation. 
-
+# Run MRTM or SRTM to ROI TACs with the reference region TAC to get the k2p value.
+# Averaging of several k′2 samples from high-BP ROIs might be required to minimize the variability of k′2 estimation. 
 
 k2p = 0.000250
 r1 = 0.905
@@ -244,35 +271,36 @@ t1_2 = 110 # half-life of the tracer in minutes
 beta = np.log(2)/t1_2
 beta_lim = [beta*0.1/60, beta*10/60] # convert to s-1
 n_beta = 128
-b = basis.make_basis(ref.inputf1cubic, dt, beta_lim=beta_lim, n_beta=n_beta, w=None, k2p=k2p, fig=True)
+b = basis.make_basis(input_ref, dt, beta_lim=beta_lim, n_beta=n_beta, w=None, k2p=k2p, fig=True)
 
 #%%
 # provide all user inputs in one dict here and later 'get_model_inputs' will select the needed ones
 
 
 user_inputs = {'dt': dt,
-               'inputf1': inputf1,
+               'inputf1': input_ref,
                'w': None,
                'r1': r1, # influx rate 𝑅1
                'k2p': k2p,
                'beta_lim': beta_lim,
                'n_beta': n_beta,
                'b': b, # basis functions
-               'linear_phase_start_l': start_t, # logan_ref linear phase start of TAC
-               'linear_phase_end_l': end_t,  # logan_ref linear phase end of TAC
-               'linear_phase_start_l2': start_t, # logan_ref_k2p linear phase start of TAC
-               'linear_phase_end_l2': end_t, # logan_ref_k2p linear phase end of TAC
-               'linear_phase_start_m': start_t, # mrtm linear phase start of TAC
-               'linear_phase_end_m': end_t, # mrtm linear phase end of TAC
-               'linear_phase_start_m2': start_t, # mrtm_k2p linear phase start of TAC
-               'linear_phase_end_m2': end_t, # mrtm_k2p linear phase end of TAC
+               'linear_phase_start_l': start_l, # logan_ref linear phase start of TAC
+               'linear_phase_end_l': end_l,  # logan_ref linear phase end of TAC
+               'linear_phase_start_l2': start_l2, # logan_ref_k2p linear phase start of TAC
+               'linear_phase_end_l2': end_l2, # logan_ref_k2p linear phase end of TAC
+               'linear_phase_start_m': start_m, # mrtm linear phase start of TAC
+               'linear_phase_end_m': end_m, # mrtm linear phase end of TAC
+               'linear_phase_start_m2': start_m2, # mrtm_k2p linear phase start of TAC
+               'linear_phase_end_m2': end_m2, # mrtm_k2p linear phase end of TAC
                'fig': False
                }
 
+
 #%%
 # model
-# srtm_fun = simplified reference tissue model SRTM (nonlinear model)
-# srtm_fun_k2p = SRTM2 with pre-defined 𝑘′2 version (nonlinear model)
+# srtm = simplified reference tissue model SRTM (nonlinear model)
+# srtm_k2p = SRTM2 with pre-defined 𝑘′2 version (nonlinear model)
 # srtmb_basis = SRTM with pre-calculated basis functions (linear model)
 # srtmb_k2p_basis = SRTM2 with pre-calculated basis functions ( pre-defined 𝑘′2 version) (linear model)
 # srtmb_asl_basis = SRTM ASK model (linear model). 
@@ -291,8 +319,121 @@ user_inputs = {'dt': dt,
 # In km_outputs BP is binding potential, R1 is influx rate, k2 is efflux rate, tacf is fitted TAC
 
 
-models = ['srtm_fun', 'srtm_fun_k2p', 'srtmb_basis', 'srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm', 'mrtm_k2p']
-km_outputs = ['R1', 'k2', 'BP']
+# models = ['srtm', 'srtm_k2p', 'srtmb_basis', 'srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm', 'mrtm_k2p']
+
+models = ['srtm', 'srtmb_basis', 'mrtm']
+km_outputs = ['r1', 'k2p', 'BP']
+
+save_base = os.path.join(vol_param_pre_folder, os.path.basename(os.path.splitext(img_pet.get_filename())[0]))
+# save_ext = os.path.splitext(img_pet.get_filename())[1] # '.nii' or '.nii.gz'
+save_ext = '.nii.gz'
+
+for model_name in models:
+    print(model_name)
+    model_inputs = get_model_inputs(user_inputs, model_name)
+    # if mask is not None, the model will calculate the voxel TAC in the mask region. 
+    # Otherwise, it will fit region with value higher than a threshold depend on thr.
+    parametric_images_dict, pet_image_fit = image_to_parametric(img_data_pet, dt, model_name, model_inputs, km_outputs,
+                                                                mask=mask_roi, thr=0.5)
+    for kp in parametric_images_dict.keys():
+        nib.save(nib.Nifti1Image(parametric_images_dict[kp], img_pet.affine), save_base +
+                 '_' + model_name + '_' + kp + save_ext)
+    nib.save(nib.Nifti1Image(pet_image_fit, img_pet.affine), save_base +
+             '_' + model_name + '_' + 'fit' + save_ext)
+
+# %% load the k2p parametric images
+save_ext = '.nii.gz'
+filter_str = 'k2p' + save_ext
+k2p_files = [os.path.join(vol_param_pre_folder, f) for f in os.listdir(vol_param_pre_folder) if (filter_str in f)]
+k2p_list = {}
+
+for k2p_file in k2p_files:
+    img_k2p = nib.load(k2p_file)
+    img_data_k2p = img_k2p.get_fdata()
+    regions_data, regions_label = extract_regional_values_image_data(img_data_k2p, img_data_roi)
+    k2p_data = regions_data[1] #regions_label=1
+    k2p_mean = np.mean(k2p_data)
+    k2p_list.update({os.path.basename(k2p_file): k2p_mean})
+
+r1_files = [os.path.join(vol_param_pre_folder, f) for f in os.listdir(vol_param_pre_folder) if ('r1' in f)]
+r1_list = {}
+
+for r1_file in r1_files:
+    img_r1 = nib.load(r1_file)
+    img_data_r1 = img_r1.get_fdata()
+    regions_data, regions_label = extract_regional_values_image_data(img_data_r1, img_data_roi)
+    r1_data = regions_data[1] #regions_label=1
+    r1_mean = np.mean(r1_data)
+    r1_list.update({os.path.basename(r1_file): r1_mean})
+    
+
+# %% Set the k2p and r1 values according to the parametric images
+
+k2p = k2p_list['M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p.nii.gz']
+r1 = r1_list['M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_r1.nii.gz']
+k2p = 0.001
+
+#%% judge the linear phase of models
+t = np.arange(0, len(input_roi))
+# t_trunc to truncate the initial rising part of the TAC
+li.logan_k2p_linear_phase(input_roi, input_ref, t, k2p, t_trunc=(200, np.inf), save_dir=linearity)
+li.mrtm_k2p_linear_phase(input_roi, input_ref, t, k2p, t_trunc=(200, np.inf), save_dir=linearity)
+
+
+#%% set the start and end time of the linear phase of the Logan plot
+start_l = 600
+end_l = None
+
+start_l2 = 1200
+end_l2 = None
+
+start_m = 700
+end_m = 3100
+
+start_m2 = 1200
+end_m2 = None
+
+#%% basis functions
+t1_2 = 110 # half-life of the tracer in minutes
+beta = np.log(2)/t1_2
+beta_lim = [beta*0.1/60, beta*10/60] # convert to s-1
+n_beta = 128
+b = basis.make_basis(input_ref, dt, beta_lim=beta_lim, n_beta=n_beta, w=None, k2p=k2p, fig=True)
+
+#%%
+# provide all user inputs in one dict here and later 'get_model_inputs' will select the needed ones
+
+
+user_inputs = {'dt': dt,
+               'inputf1': input_ref,
+               'w': None,
+               'r1': r1, # influx rate 𝑅1
+               'k2p': k2p,
+               'beta_lim': beta_lim,
+               'n_beta': n_beta,
+               'b': b, # basis functions
+               'linear_phase_start_l': start_l, # logan_ref linear phase start of TAC
+               'linear_phase_end_l': end_l,  # logan_ref linear phase end of TAC
+               'linear_phase_start_l2': start_l2, # logan_ref_k2p linear phase start of TAC
+               'linear_phase_end_l2': end_l2, # logan_ref_k2p linear phase end of TAC
+               'linear_phase_start_m': start_m, # mrtm linear phase start of TAC
+               'linear_phase_end_m': end_m, # mrtm linear phase end of TAC
+               'linear_phase_start_m2': start_m2, # mrtm_k2p linear phase start of TAC
+               'linear_phase_end_m2': end_m2, # mrtm_k2p linear phase end of TAC
+               'fig': False
+               }
+
+#%% load brain mask
+
+mask_file = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\BrainMask.nii.gz"
+img_mask = nib.load(mask_file)
+img_data_mask = img_mask.get_fdata()
+mask_brain = np.argwhere(img_data_mask > 0)
+
+# %%
+models = ['srtm_k2p', 'srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm_k2p']
+# models = ['srtmb_asl_basis', 'srtmb_k2p_basis', 'mrtm_k2p']
+km_outputs = ['r1', 'k2', 'k2p', 'BP'] # do not add tacf here, it will be saved as 'fit'
 
 save_base = os.path.join(vol_param_folder, os.path.basename(os.path.splitext(img_pet.get_filename())[0]))
 # save_ext = os.path.splitext(img_pet.get_filename())[1] # '.nii' or '.nii.gz'
@@ -301,14 +442,21 @@ save_ext = '.nii.gz'
 for model_name in models:
     print(model_name)
     model_inputs = get_model_inputs(user_inputs, model_name)
-    # if mask is not None, the model will fit TAC in the mask region. 
+    # if mask is not None, the model will calculate the voxel TAC in the mask region. 
     # Otherwise, it will fit region with value higher than a threshold depend on thr.
     parametric_images_dict, pet_image_fit = image_to_parametric(img_data_pet, dt, model_name, model_inputs, km_outputs,
-                                                                mask=None, thr=0.5)
+                                                                mask=mask_brain, thr=0.5)
     for kp in parametric_images_dict.keys():
         nib.save(nib.Nifti1Image(parametric_images_dict[kp], img_pet.affine), save_base +
                  '_' + model_name + '_' + kp + save_ext)
-    nib.save(nib.Nifti1Image(pet_image_fit, img_pet.affine), os.path.splitext(img_pet.get_filename())[0] +
+    nib.save(nib.Nifti1Image(pet_image_fit, img_pet.affine), save_base +
              '_' + model_name + '_' + 'fit' + save_ext)
 
-# %%
+# %% calculate the mean params of the ROIs
+# load the parametric images
+nigra_r_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\NigraRmask.nii.gz"
+nigra_l_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\NigraLmask.nii.gz"
+caudate_r_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\CaudateRmask.nii.gz"
+caudate_l_mask = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\CaudateLmask.nii.gz"
+
+# %% 

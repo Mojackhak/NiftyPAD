@@ -72,7 +72,7 @@ def logan_linear_phase(C_t, C_ref, t, t_trunc=(200, np.inf), save_dir=None):
 
     # Save the plot if save_dir is provided
     if save_dir is not None:
-        file_path = f"{save_dir}/logan_plot_with_slopes.svg"
+        file_path = f"{save_dir}/logan_linear_phase.svg"
         plt.savefig(file_path, format='svg')
         print(f"Plot saved to {file_path}")
 
@@ -247,7 +247,7 @@ def mrtm_linear_phase(C_t, C_ref, t, t_trunc=(200, np.inf), save_dir=None):
 
     # Save the plot if save_dir is provided
     if save_dir is not None:
-        file_path = f"{save_dir}/mrtm_subplots_with_slopes.svg"
+        file_path = f"{save_dir}/mrtm_linear_phase.svg"
         plt.savefig(file_path, format='svg')
         print(f"Plot saved to {file_path}")
 

@@ -48,7 +48,8 @@ def srtmb_basis(tac, b):
 
     theta = np.append(theta, b['beta'][i])
     r1, k2, bp = kp.srtm_theta2kp(theta)
-    kps = {'r1': r1, 'k2': k2, 'bp': bp, 'tacf': tacf}
+    k2p = k2 / r1
+    kps = {'r1': r1, 'k2': k2, 'bp': bp, 'k2p': k2p, 'tacf': tacf}
     return kps
 
 
@@ -884,7 +885,8 @@ def srtm_para2tac(r1, k2, bp, inputf1_dt):
 
 
 def srtm_fun_w(inputf1_dt_w, r1, k2, bp):
-    inputf1, dt, w = inputf1_dt_w
+    inputf1, dt1, dt2, w = inputf1_dt_w
+    dt = np.array([dt1, dt2])
     tac = srtm_fun((inputf1, dt), r1, k2, bp)
     if w is None:
         w = 1
@@ -893,16 +895,24 @@ def srtm_fun_w(inputf1_dt_w, r1, k2, bp):
 
 
 def srtm(tac, dt, inputf1, w):
-    inputf1_dt = inputf1, dt
-    inputf1_dt_w = inputf1, dt, w
+
     if w is None:
         w = 1
+
+    if np.isscalar(w):
+        w = np.full_like(dt[0,], w)
+    
+    inputf1 = kt.int2dt(inputf1, dt)
+    inputf1_dt = inputf1, dt
+    inputf1_dt_w = inputf1, dt[0,], dt[1,], w   # must be k*M matrix      
+    
     p, _ = curve_fit(srtm_fun_w, inputf1_dt_w, tac * w, p0=[1, 0.00005, 0.0], bounds=(0, [3, 1, 10]))
     r1 = p[0]
     k2 = p[1]
     bp = p[2]
     tacf = srtm_fun(inputf1_dt, r1, k2, bp)
-    kps = {'r1': r1, 'k2': k2, 'bp': bp, 'tacf': tacf}
+    k2p = k2 / r1
+    kps = {'r1': r1, 'k2': k2, 'bp': bp, 'k2p': k2p, 'tacf': tacf}
     return kps
 
 
@@ -920,7 +930,9 @@ def srtm_fun_k2p(inputf1_dt_k2p, theta_0, theta_2):
 
 
 def srtm_fun_k2p_w(inputf1_dt_k2p_w, theta_0, theta_2):
-    inputf1, dt, k2p, w = inputf1_dt_k2p_w
+    inputf1, dt1, dt2, k2p, w = inputf1_dt_k2p_w
+    dt = np.array([dt1, dt2])
+    k2p = k2p[0]
     tac = srtm_fun_k2p((inputf1, dt, k2p), theta_0, theta_2)
     if w is None:
         w = 1
@@ -929,11 +941,20 @@ def srtm_fun_k2p_w(inputf1_dt_k2p_w, theta_0, theta_2):
 
 
 def srtm_k2p(tac, dt, inputf1, w, k2p):
-    inputf1_dt_k2p = inputf1, dt, k2p
-    inputf1_dt_k2p_w = inputf1, dt, k2p, w
+
+    inputf1 = kt.int2dt(inputf1, dt)
+    k2p = np.full_like(dt[0,], k2p)
+    
     if w is None:
         w = 1
+    if np.isscalar(w):
+        w = np.full_like(dt[0,], w)   
+
+    inputf1_dt_k2p = inputf1, dt, k2p
+    inputf1_dt_k2p_w = inputf1, dt[0,], dt[1,], k2p, w # must be k*M matrix
+    print(inputf1_dt_k2p_w)
     p, _ = curve_fit(srtm_fun_k2p_w, inputf1_dt_k2p_w, tac * w, p0=(1, 0.5), bounds=(0, [3, 10]))
+
     theta_0 = p[0]
     theta_2 = p[1]
     theta_1 = theta_0 * (k2p - theta_2)

@@ -182,6 +182,50 @@ def load_4D(folder_path):
 
     return concatenated_data, concatenated_img
 
+def resample_nifti(input_file, zoom_factor, save_dir):
+    """
+    Resample a 3D NIfTI image volume.
+
+    Args:
+        input_file (str): Path to the input NIfTI file.
+        zoom_factor (int): Factor for resampling the image.
+                           >1 for higher resolution, <1 for lower resolution.
+        save_dir (str): Directory to save the resampled image.
+
+    Returns:
+        None
+    """
+    # Load the image and get the data
+    img = nib.load(input_file)
+    img_data = img.get_fdata()
+    affine = img.affine
+    header = img.header
+
+    if zoom_factor > 1:
+        # Increase resolution
+        new_shape = tuple(dim * zoom_factor for dim in img_data.shape)
+        resampled_data = np.repeat(
+            np.repeat(
+                np.repeat(img_data, zoom_factor, axis=0), zoom_factor, axis=1
+            ), zoom_factor, axis=2
+        )
+    elif zoom_factor < 1:
+        # Decrease resolution
+        zoom_factor = 1 / zoom_factor
+        pad_size = [(0, (zoom_factor - dim % zoom_factor) % zoom_factor) for dim in img_data.shape]
+        padded_data = np.pad(img_data, pad_size, mode="constant")
+        grouped_data = padded_data.reshape(
+            padded_data.shape[0] // zoom_factor, zoom_factor,
+            padded_data.shape[1] // zoom_factor, zoom_factor,
+            padded_data.shape[2] // zoom_factor, zoom_factor
+        )
+        resampled_data = grouped_data.mean(axis=(1, 3, 5))
+
+    # Save the resampled image
+    resampled_img = nib.Nifti1Image(resampled_data, affine, header)
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, f"resampled_zoom_{zoom_factor}.nii.gz")
+    nib.save(resampled_img, save_path)
 # # %%
 # dicom_folder = r"E:\Chen Lab\Data\NHP\Image\M4\postmodel\200165_PET\200165-M4_preop_PET_2024-09-08\PET-CT\4660"
 # output_nii_file = r"F:\Data\Image\NHP\NiftyPAD\M4\raw\M4-Postop-PET-DTBZ-CTAC-Dynamic.nii"
