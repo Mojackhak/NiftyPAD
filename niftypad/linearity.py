@@ -50,34 +50,42 @@ def logan_linear_phase(C_t, C_ref, t, t_trunc=(200, np.inf), save_dir=None):
     # Calculate slopes between adjacent points
     slopes = np.gradient(Logan_y) / np.gradient(Logan_x)
 
-    # Visualize Logan plot with slopes
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    # Visualize Logan plot with subplots
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
-    color = 'tab:blue'
-    ax1.set_xlabel("$\\int_0^t C_{{ref}}(t)dt / C_t(t)$")
-    ax1.set_ylabel("$\\int_0^t C_t(t)dt / C_t(t)$", color=color)
-    ax1.plot(Logan_x, Logan_y, '-', label='Logan Data', color=color)
-    ax1.tick_params(axis='y', labelcolor=color)
+    # First subplot: Logan plot with normalized variables
+    ax1 = axes[0]
+    ax1.plot(Logan_x, Logan_y, label="$\\int_0^T C_T(t)dt / C_T(T)'$", color="tab:blue")
+    ax1.set_xlabel("$\\int_0^T C_R(t)dt / C_T(T)$")
+    ax1.set_ylabel("$\\int_0^T C_T(t)dt / C_T(T)'$")
 
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    # Add slopes to the first subplot
+    ax2 = ax1.twinx()
+    ax2.plot(Logan_x, slopes, label="Slopes", color="tab:red")
+    ax2.set_ylabel("Slopes", color="tab:red")
+    ax2.tick_params(axis='y', labelcolor="tab:red")
 
-    color = 'tab:red'
-    ax2.set_ylabel('Slopes', color=color)  # we already handled the x-label with ax1
-    ax2.plot(Logan_x, slopes, 'r-', label='Slopes', color=color)
-    ax2.tick_params(axis='y', labelcolor=color)
+    # Combine legends for both axes in the first subplot
+    lines_1, labels_1 = ax1.get_legend_handles_labels()
+    lines_2, labels_2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="lower right")
 
-    ax1.grid()
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.title("Logan Plot with Slopes")
+    # Second subplot: Time vs normalized integral_Cref
+    axes[1].plot(t, integral_Cref / C_t, label="$t$ vs $\\int_0^T C_R(t)dt / C_T(T)$", color="tab:green")
+    axes[1].set_xlabel("Time (t)")
+    axes[1].set_ylabel("$\\int_0^T C_R(t)dt / C_T(T)$")
+    axes[1].legend()
+
+    # Adjust layout
+    fig.tight_layout()
 
     # Save the plot if save_dir is provided
     if save_dir is not None:
-        file_path = f"{save_dir}/logan_linear_phase.svg"
+        file_path = f"{save_dir}/logan_k2p_linear_phase.svg"
         plt.savefig(file_path, format='svg')
         print(f"Plot saved to {file_path}")
 
     plt.show()
-
 
 def logan_k2p_linear_phase(C_t, C_ref, t, k2p, t_trunc=(200, np.inf), save_dir=None):
     """

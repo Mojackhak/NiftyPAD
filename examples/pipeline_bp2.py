@@ -20,7 +20,7 @@ import niftypad.linearity as li
 from niftypad.image_process.slice_visualize import vol_heatmap
 
 #%% file structure
-wd = r"F:\Data\Image\NHP\NiftyPAD\M4\PostMPTP2"
+wd = r"F:\Data\Image\NHP\NiftyPAD\M4\Postop2"
 os.makedirs(wd, exist_ok=True)
 os.chdir(wd)
 
@@ -94,7 +94,7 @@ dicom4_to_nifti3(dicom_folder, output_base)
 # pet_image = img.get_fdata()
 
 # pet_folder = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\M4-Postop-PET-DTBZ-CTAC-Dynamic"
-pet_folder = os.path.join(resample_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic')
+pet_folder = os.path.join(resample_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic')
 img_data_pet, img_pet = load_4D(pet_folder) # img_data is tensor of shape (x, y, z, t), img is nibabel image
 
 
@@ -163,7 +163,7 @@ ref.plot_tac('feng_srtm', tac_ref_folder)
 
 #%%
 # choose the best interpolation method!
-input_ref = ref.inputf1_feng_srtm
+input_ref = ref.inputf1_exp_am
 
 #%% Read the ROI mask file
 roi_file = os.path.join(resample_folder, r'PutamenRmask.nii.gz')
@@ -208,14 +208,14 @@ li.mrtm_linear_phase(input_roi, input_ref, t, t_trunc=(200, np.inf), save_dir=li
 
 
 #%% set the start and end time of the linear phase of the Logan plot
-start_l = 1000
+start_l = 700
 end_l = None
 
 start_l2 = 1000
 end_l2 = None
 
-start_m = 1200
-end_m = None
+start_m = 800
+end_m = 3200
 
 start_m2 = 1500
 end_m2 = None
@@ -235,7 +235,8 @@ end_m2 = None
 # Averaging of several k′2 samples from high-BP ROIs might be required to minimize the variability of k′2 estimation. 
 
 k2p = 0.001
-r1 = 1.65
+r1 = 1.5
+
 #%%
 # basis functions are very important for accuracy of the model
 # REF: http://www.turkupetcentre.net/petanalysis/model_compartmental_ref.html#SRTM
@@ -383,10 +384,9 @@ for r1_file in r1_files:
     
 
 # %% Set the k2p and r1 values according to the parametric images
-# u can compare the results of mrmt and mrmtp with the k2p to see if the k2p is reasonable
 
-k2p = k2p_list['M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_mrtm_k2p.nii.gz']
-r1 = r1_list['M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_mrtm_r1.nii.gz']
+k2p = k2p_list['M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p.nii.gz']
+r1 = r1_list['M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_r1.nii.gz']
 
 #%% judge the linear phase of models
 t = np.arange(0, len(input_roi))
@@ -397,10 +397,10 @@ li.mrtm_k2p_linear_phase(input_roi, input_ref, t, k2p, t_trunc=(200, np.inf), sa
 
 #%% set the start and end time of the linear phase of the Logan plot
 
-start_l2 = 700
+start_l2 = 800
 end_l2 = None
 
-start_m2 = 800
+start_m2 = 1000
 end_m2 = None
 
 #%% basis functions
@@ -466,12 +466,12 @@ for model_name in models:
              '_' + model_name + '_' + 'fit' + save_ext)
 
 #%% set the params img path
-srtmb_asl_basis_bp_files = os.path.join(vol_param_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_srtmb_asl_basis_bp.nii.gz')
-srtmb_k2p_basis_bp_files = os.path.join(vol_param_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_srtmb_k2p_basis_bp.nii.gz')
-mrtm_k2p_basis_bp_files = os.path.join(vol_param_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp.nii.gz')
-srtm_bp_files = os.path.join(vol_param_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_srtm_bp.nii.gz')
-srtm_basis_bp_files = os.path.join(vol_param_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_srtm_bp.nii.gz')
-mrtm_bp_files = os.path.join(vol_param_folder, r'M4-PostMPTP-PET-DTBZ-CTAC-Dynamic_mrtm_bp.nii.gz')
+srtmb_asl_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtmb_asl_basis_bp.nii.gz')
+srtmb_k2p_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtmb_k2p_basis_bp.nii.gz')
+mrtm_k2p_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp.nii.gz')
+srtm_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtm_bp.nii.gz')
+srtm_basis_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_srtm_bp.nii.gz')
+mrtm_bp_files = os.path.join(vol_param_folder, r'M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_bp.nii.gz')
 
 model_list_files = [srtmb_asl_basis_bp_files, srtmb_k2p_basis_bp_files, mrtm_k2p_basis_bp_files, 
                     srtm_bp_files, srtm_basis_bp_files, mrtm_bp_files]
@@ -533,27 +533,25 @@ df_bp.to_csv(df_savename)
 #%% adjust the param img (optional)
 # adjust the parametric images orientation in 3D slicer
 # note: adjust the orientation of brain mask image to the same as the parametric images
-# do not forget to crop after adjust the orientation
-# for brain mask,  dilate 3 mm then guassian smooth 3 mm in 3D slicer
 
 # %% visualize the parametric images
 
 img_bp_file = os.path.join(show_fig_folder, r'M6-Preop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp.nii.gz')
 img_bp = nib.load(img_bp_file)
 img_bp_data = img_bp.get_fdata()
-mask_file = os.path.join(show_fig_folder, r'BrainMask_dilate.nii.gz')
+mask_file = os.path.join(show_fig_folder, r'BrainMask.nii.gz')
 img_mask = nib.load(mask_file)
 img_data_mask = img_mask.get_fdata()
 img_bp_file.split('.',1)[0]
 save_base = os.path.join(show_fig_folder, os.path.basename(img_bp_file.split('.',1)[0]))
 # Visualize and save an axial slice (slice 50)
-nslice =[15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
+nslice =[15, 20, 25, 30, 35, 40, 45]
 for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='ax', mask=img_data_mask, 
-            barlim=(0,6), colormap='viridis', save_base=save_base)
+            barlim=(0,5), colormap='viridis', save_base=save_base)
     vol_heatmap(img_bp_data, nslice=i, orient='cor', mask=img_data_mask,
-            barlim=(0,6), colormap='viridis', save_base=save_base)
+            barlim=(0,5), colormap='viridis', save_base=save_base)
     vol_heatmap(img_bp_data, nslice=i, orient='sag', mask=img_data_mask,
-            barlim=(0,6), colormap='viridis', save_base=save_base)
+            barlim=(0,5), colormap='viridis', save_base=save_base)
 
 # %%

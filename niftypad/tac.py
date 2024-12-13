@@ -155,7 +155,7 @@ class Ref:
         ax1.set_xlabel("Time (arbitrary units)")
         ax1.set_ylabel("TAC", color='blue')
         ax1.tick_params(axis='y', labelcolor='blue')
-        ax1.legend(loc='upper right', bbox_to_anchor=(1.0, 1.0))  
+        ax1.legend(loc='upper right', bbox_to_anchor=(1.0, 0.3))  
         
         # Create a twin y-axis for the derivative of TAC
         ax2 = ax1.twinx()
@@ -164,7 +164,7 @@ class Ref:
         # Set labels and legend for the right y-axis
         ax2.set_ylabel("Derivative of TAC", color='green')
         ax2.tick_params(axis='y', labelcolor='green')
-        ax2.legend(loc='upper right', bbox_to_anchor=(1.0, 0.9))  
+        ax2.legend(loc='upper right', bbox_to_anchor=(1.0, 0.2))  
 
 
         # Display the plot

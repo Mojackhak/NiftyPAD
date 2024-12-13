@@ -40,7 +40,7 @@ def dicom4_to_nifti3(dicom_folder, output_base):
         nifti_3d = nib.Nifti1Image(data_3d, affine)
 
         # Create output filename
-        output_filename = os.path.join(output_dir, f"{os.path.basename(output_base)}_{i:03d}.nii")
+        output_filename = os.path.join(output_dir, f"{os.path.basename(output_base)}_{i:03d}.nii.gz")
 
         # Save 3D NIfTI file
         nib.save(nifti_3d, output_filename)
@@ -177,7 +177,7 @@ def load_4D(folder_path):
     # Create a new NIfTI image from the concatenated data
     concatenated_img = nib.Nifti1Image(concatenated_data, affine=img.affine, header=img.header)
 
-    filename = folder_path + ".nii"
+    filename = folder_path + ".nii.gz"
     concatenated_img.set_filename(filename)
 
     return concatenated_data, concatenated_img
@@ -226,13 +226,128 @@ def resample_nifti(input_file, zoom_factor, save_dir):
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, f"resampled_zoom_{zoom_factor}.nii.gz")
     nib.save(resampled_img, save_path)
+
+
+# import os
+# import nibabel as nib
+# import numpy as np
+# import pydicom
+# from pydicom.dataset import Dataset, FileMetaDataset
+# import datetime
+# from pathlib import Path
+
+# def nii_series_to_dicom(input_folder, output_folder):
+#     """
+#     Convert a series of NIfTI (.nii or .nii.gz) files in a folder representing a 3D+t dynamic medical image
+#     to a single DICOM series in another folder.
+
+#     Args:
+#         input_folder (str): Path to the folder containing NIfTI files (assumed to be in temporal order).
+#         output_folder (str): Path to the folder to save the combined DICOM series.
+#     """
+#     # Ensure output folder exists
+#     os.makedirs(output_folder, exist_ok=True)
+
+#     # Sort the NIfTI files in temporal order
+#     nii_files = sorted([f for f in os.listdir(input_folder) if f.endswith('.nii') or f.endswith('.nii.gz')])
+
+#     if not nii_files:
+#         print("No NIfTI files found in the input folder.")
+#         return
+
+#     combined_data = []
+#     affine = None
+#     header = None
+
+#     # Load and combine NIfTI files
+#     for file_name in nii_files:
+#         file_path = os.path.join(input_folder, file_name)
+#         nii = nib.load(file_path)
+#         data = nii.get_fdata()
+
+#         if len(data.shape) != 3:
+#             print(f"Skipping {file_name}: Not a 3D file.")
+#             continue
+
+#         if affine is None:
+#             affine = nii.affine
+#             header = nii.header
+
+#         combined_data.append(data)
+
+#     if not combined_data:
+#         print("No valid 3D NIfTI files found.")
+#         return
+
+#     combined_data = np.stack(combined_data, axis=-1)  # Combine into a 4D array
+#     num_volumes = combined_data.shape[3]
+
+#     # Generate a series of DICOM files for each time point
+#     for t in range(num_volumes):
+#         volume_data = combined_data[..., t]
+
+#         # Create a basic DICOM dataset
+#         file_meta = FileMetaDataset()
+#         file_meta.MediaStorageSOPClassUID = pydicom.uid.UID("1.2.840.10008.5.1.4.1.1.2")  # MR Image Storage
+#         file_meta.MediaStorageSOPInstanceUID = pydicom.uid.generate_uid()
+#         file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian  # Specify Transfer Syntax UID
+#         file_meta.ImplementationClassUID = pydicom.uid.generate_uid()
+
+#         ds = Dataset()
+#         ds.file_meta = file_meta
+
+#         # Add patient and study information
+#         ds.PatientName = "NIFTI_CONVERTED"
+#         ds.PatientID = "123456"
+#         ds.StudyInstanceUID = pydicom.uid.generate_uid()
+#         ds.SeriesInstanceUID = pydicom.uid.generate_uid()
+#         ds.SOPInstanceUID = pydicom.uid.generate_uid()
+#         ds.Modality = "MR"
+#         ds.ContentDate = datetime.datetime.now().strftime('%Y%m%d')
+#         ds.ContentTime = datetime.datetime.now().strftime('%H%M%S')
+
+#         # Add image information
+#         ds.ImagePositionPatient = affine[:3, 3].tolist()
+#         ds.ImageOrientationPatient = affine[:3, :3].flatten().tolist()
+#         ds.PixelSpacing = [header['pixdim'][1], header['pixdim'][2]]
+#         ds.SliceThickness = header['pixdim'][3]
+
+#         # Add pixel data
+#         ds.Rows, ds.Columns = volume_data.shape[:2]
+#         ds.SamplesPerPixel = 1
+#         ds.PhotometricInterpretation = "MONOCHROME2"
+#         ds.BitsAllocated = 16
+#         ds.BitsStored = 16
+#         ds.HighBit = 15
+#         ds.PixelRepresentation = 1
+#         ds.PixelData = (volume_data.astype(np.int16)).tobytes()
+
+#         # Save the DICOM file
+#         output_path = Path(output_folder) / f"dynamic_series_t{t}.dcm"
+#         pydicom.dcmwrite(str(output_path), ds)
+
+#     print(f"Converted {len(nii_files)} NIfTI files into a DICOM series.")
+
+# Example usage
+# nii_series_to_dicom('/path/to/nifti/folder', '/path/to/output/dicom/folder')
+
+
+# Example usage
+# nii_series_to_dicom('/path/to/nifti/folder', '/path/to/output/dicom/folder')
+
+
+# Example usage
+# nii_series_to_dicom('/path/to/nifti/folder', '/path/to/output/dicom/folder')
+
+# Example usage
+# nii_to_dicom('/path/to/nifti/folder', '/path/to/output/dicom/folder')
 # # %%
 # dicom_folder = r"E:\Chen Lab\Data\NHP\Image\M4\postmodel\200165_PET\200165-M4_preop_PET_2024-09-08\PET-CT\4660"
 # output_nii_file = r"F:\Data\Image\NHP\NiftyPAD\M4\raw\M4-Postop-PET-DTBZ-CTAC-Dynamic.nii"
-# convert_dynamic_dicom_to_nii(dicom_folder, output_nii_file)
+# # convert_dynamic_dicom_to_nii(dicom_folder, output_nii_file)
 # # %%
-# nii_folder = r"F:\Data\Image\NHP\NiftyPAD\M4\raw\M4-Postop-PET2-DTBZ-CTAC-Dynamic"
-# output_nii_file = r"F:\Data\Image\NHP\NiftyPAD\M4\raw\M4-Postop-PET3-DTBZ-CTAC-Dynamic.nii"
+# nii_folder = r"F:\Data\Image\NHP\NiftyPAD\M4\PostMPTP\test"
+# output_nii_file = r"F:\Data\Image\NHP\NiftyPAD\M4\PostMPTP\test.nii"
 # combine_nifti_files(nii_folder, output_nii_file)
 
 # # %%
