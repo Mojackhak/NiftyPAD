@@ -28,8 +28,8 @@ def vol_heatmap(vol, nslice, orient, mask=None, barlim=None, colormap='hot', sav
     # Crop the volume to the smallest bounding box
     # mask, crop_indices = vol_crop(mask) if mask is not None else None
     # vol = vol[crop_indices]
-    vol, crop_indices = vol_crop(vol)
-    mask = mask[crop_indices] if mask is not None else None
+    # vol, crop_indices = vol_crop(vol)
+    # mask = mask[crop_indices] if mask is not None else None
 
 
     # Validate orientation
@@ -112,15 +112,15 @@ def vol_crop(vol):
 # Example volume and mask
 # import nibabel as nib
 
-# img_bp_file = r"F:\Data\Image\NHP\NiftyPAD\M4\Postop2\show-fig\M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp.nii.gz"
+# img_bp_file = r"F:\Data\Image\NHP\NiftyPAD\M5\Preop\show-fig\M5-Preop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp.nii.gz"
 # img_bp = nib.load(img_bp_file)
 # img_bp_data = img_bp.get_fdata()
-# mask_file = r"F:\Data\Image\NHP\NiftyPAD\M4\Postop2\show-fig\BrainMask_dilate.nii.gz"
+# mask_file = r"F:\Data\Image\NHP\NiftyPAD\M5\Preop\show-fig\BrainMask_dilate.nii.gz"
 # img_mask = nib.load(mask_file)
 # img_data_mask = img_mask.get_fdata()
-# save_base = r"F:\Data\Image\NHP\NiftyPAD\M4\Postop2\show-fig\M4-Postop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp"
+# save_base = r"F:\Data\Image\NHP\NiftyPAD\M5\Preop\show-fig\M5-Preop-PET-DTBZ-CTAC-Dynamic_mrtm_k2p_bp"
 # # Visualize and save an axial slice (slice 50)
-# nslice =[15, 20, 25, 30, 35, 40, 45]
+# nslice =[26, 27, 28, 29]
 # for i in nslice:
 #     vol_heatmap(img_bp_data, nslice=i, orient='ax', mask=img_data_mask, 
 #             barlim=(0,5), colormap='viridis', save_base=save_base)

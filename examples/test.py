@@ -20,7 +20,7 @@ import niftypad.linearity as li
 from niftypad.image_process.slice_visualize import vol_heatmap, vol_crop
 
 #%% file structure
-wd = r"F:\Data\Image\NHP\NiftyPAD\M6\PostMPTP"
+wd = r"F:\Data\Image\NHP\NiftyPAD\M4\PostExp"
 os.makedirs(wd, exist_ok=True)
 os.chdir(wd)
 
@@ -67,8 +67,8 @@ show_fig_folder = os.path.join(wd, "show-fig")
 #%% Split the 4D PET image into 3D images
 # note that direct save the 4D image to nii file will cause the image orientation inconsistent with raw dicom image (do not know why)
 # have try pkg: pydicom, dcm2niix, SimpleITK all failed
-dicom_folder = r"E:\ChenLab\RawData\NHP\Image\M6\200169-M6_postop_PET_20250614\200169\20250614002251\1861"
-pet_basename = r"M6-Postop-PET-DTBZ-CTAC-Dynamic"
+dicom_folder = r"E:\ChenLab\RawData\NHP\Image\M4\200169-M6_postexp_PET_20250614\200165\1856"
+pet_basename = r"M4-PostExp-PET-DTBZ-CTAC-Dynamic"
 output_base = os.path.join(raw_folder, pet_basename)
 dicom4_to_nifti3(dicom_folder, output_base)
 
@@ -221,13 +221,13 @@ li.mrtm_linear_phase(input_roi, input_ref, t, t_trunc=(200, np.inf), save_dir=li
 
 
 #%% set the start and end time of the linear phase of the Logan plot
-start_l = 1000
+start_l = 1500
 end_l = None
 
 start_l2 = 1000
 end_l2 = None
 
-start_m = 1200
+start_m = 1800
 end_m = None
 
 start_m2 = 1500
@@ -410,10 +410,10 @@ li.mrtm_k2p_linear_phase(input_roi, input_ref, t, k2p, t_trunc=(200, np.inf), sa
 
 #%% set the start and end time of the linear phase of the Logan plot
 
-start_l2 = 700
+start_l2 = 1800
 end_l2 = None
 
-start_m2 = 800
+start_m2 = 1000
 end_m2 = None
 
 #%% basis functions
@@ -548,7 +548,6 @@ df_bp.to_csv(df_savename)
 # note: adjust the orientation of brain mask image to the same as the parametric images
 # do not forget to crop after adjust the orientation
 # for brain mask,  dilate 3 mm then guassian smooth 3 mm in 3D slicer
-# save/copy the result to show-fig folder
 
 # %% visualize the parametric images
 

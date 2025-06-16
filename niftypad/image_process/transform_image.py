@@ -351,8 +351,8 @@ def resample_nifti(input_file, zoom_factor, save_dir):
 # combine_nifti_files(nii_folder, output_nii_file)
 
 # # %%
-# dicom_folder = r"E:\Chen Lab\Data\NHP\Image\M4\postmodel\200165_PET\200165-M4_preop_PET_2024-09-08\PET-CT\4660"
-# output_base = r"F:\Data\Image\NHP\NiftyPAD\M4\raw\M4-Postop-PET-DTBZ-CTAC-Dynamic"
+# dicom_folder = r"F:\Data\Image\NHP\DBS\200169_M6\200169-M6_postop_PET_20250614\20250614002251\1861"
+# output_base = r"F:\Data\Image\NHP\DBS\200169_M6\200169_M6_Nii\M6-Postop-PET-DTBZ-CTAC-Dynamic"
 # dicom4_to_nifti3(dicom_folder, output_base)
 # # %%
 # folder_path = r"F:\Data\Image\NHP\NiftyPAD\M4\resample\Scene\M4-Postop-PET-DTBZ-CTAC-Dynamic"

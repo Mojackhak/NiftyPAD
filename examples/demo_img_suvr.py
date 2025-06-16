@@ -13,11 +13,11 @@ from niftypad.tac import Ref
 from niftypad.image_process.transform_image import load_4D
 from niftypad.image_process.parametric_image import image_to_suvr_with_reference_tac
 from niftypad.image_process.regions import extract_regional_values_image_data
-from niftypad.image_process.slice_visualize import vol_heatmap
+from niftypad.image_process.slice_visualize import vol_heatmap, vol_crop
 
 
 #%% file structure
-wd = r"F:\Data\Image\NHP\NiftyPAD\M6\Preop-3000"
+wd = r"F:\Data\Image\NHP\NiftyPAD\M4\PostExp"
 os.chdir(wd)
 
 os.makedirs("raw", exist_ok=True)
@@ -36,8 +36,8 @@ os.makedirs("show-fig", exist_ok=True)
 show_fig_folder = os.path.join(wd, "show-fig")
 
 #%% load PET image
-
-pet_folder = os.path.join(resample_folder, r"M6-Preop-PET-DTBZ-CTAC-Dynamic")
+basename = r"M6-Postop-PET-DTBZ-CTAC-Dynamic"
+pet_folder = os.path.join(resample_folder, basename)
 img_data_pet, img_pet = load_4D(pet_folder) # img_data is tensor of shape (x, y, z, t), img is nibabel image
 
 
@@ -80,7 +80,7 @@ nib.save(nib.Nifti1Image(image_suvr, img_pet.affine), save_base +
 
 #%% read the suvr image
 
-suvr_file = os.path.join(vol_param_folder, r'M6-Preop-PET-DTBZ-CTAC-Dynamic_suvr.nii.gz')
+suvr_file = os.path.join(vol_param_folder, rf'{basename}_suvr.nii.gz')
 img_sur_f = nib.load(suvr_file)
 img_data_suvr_f = img_sur_f.get_fdata()
 
@@ -127,15 +127,17 @@ df_suvr = pd.DataFrame.from_dict(suvr_list, orient="index", columns=["Value"])
 # Save the DataFrame to CSV
 df_savename = os.path.join(param_folder, 'suvr_list.csv')
 df_suvr.to_csv(df_savename)
-#%% adjust the param img (optional)
+
+#%% adjust the param img 
 # adjust the parametric images orientation in 3D slicer
 # note: adjust the orientation of brain mask image to the same as the parametric images
 # do not forget to crop after adjust the orientation
 # for brain mask,  dilate 3 mm then guassian smooth 3 mm in 3D slicer
+# save/copy the result to show-fig folder
 
 # %% visualize the parametric images
 
-img_bp_file = os.path.join(show_fig_folder, r'M6-Preop-PET-DTBZ-CTAC-Dynamic_suvr.nii.gz')
+img_bp_file = os.path.join(show_fig_folder, rf'{basename}_suvr.nii.gz')
 img_bp = nib.load(img_bp_file)
 img_bp_data = img_bp.get_fdata()
 mask_file = os.path.join(show_fig_folder, r'BrainMask_dilate.nii.gz')
@@ -143,13 +145,25 @@ img_mask = nib.load(mask_file)
 img_data_mask = img_mask.get_fdata()
 img_bp_file.split('.',1)[0]
 save_base = os.path.join(show_fig_folder, os.path.basename(img_bp_file.split('.',1)[0]))
+
+# crop the volume to the smallest bounding box
+img_data_mask, crop_indices = vol_crop(img_data_mask)
+img_bp_data = img_bp_data[crop_indices]
+
 # Visualize and save an axial slice (slice 50)
-nslice =[15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
+# nslice =[15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
+nslice =np.arange(0, img_data_mask.shape[2], 5) # every 5 slices
 for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='ax', mask=img_data_mask, 
             barlim=(0,6), colormap='viridis', save_base=save_base)
+    
+nslice = np.arange(0, img_data_mask.shape[1], 5) # every 5 slices
+for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='cor', mask=img_data_mask,
             barlim=(0,6), colormap='viridis', save_base=save_base)
+    
+nslice = np.arange(0, img_data_mask.shape[0], 5) # every 5 slices
+for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='sag', mask=img_data_mask,
             barlim=(0,6), colormap='viridis', save_base=save_base)
 # %%
