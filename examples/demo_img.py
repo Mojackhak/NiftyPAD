@@ -9,7 +9,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 import numpy as np
 import pandas as pd
 import nibabel as nib
-import subprocess
 from niftypad.tac import Ref
 from niftypad import basis
 from niftypad.image_process.parametric_image import image_to_parametric
@@ -20,7 +19,11 @@ import niftypad.linearity as li
 from niftypad.image_process.slice_visualize import vol_heatmap, vol_crop
 
 #%% file structure
-wd = r"F:\Data\Image\NHP\NiftyPAD\M6\PostMPTP"
+wd = r"F:\Data\Image\NHP\NiftyPAD\M6\Preop"
+
+pet_basename = r"M6-Preop-PET-DTBZ-CTAC-Dynamic"
+
+
 os.makedirs(wd, exist_ok=True)
 os.chdir(wd)
 
@@ -57,6 +60,8 @@ param_folder = os.path.join(wd, "params")
 os.makedirs("show-fig", exist_ok=True)
 show_fig_folder = os.path.join(wd, "show-fig")
 
+
+
 # #%% Paths provided in the query
 # dicom_folder = r"E:\Chen Lab\Data\NHP\Image\M4\postmodel\200165_PET\200165-M4_preop_PET_2024-09-08\PET-CT\4660"
 # output_file = r"F:\Data\Image\NHP\NiftyPAD\M4\raw-file\M4-Postop-PET-DTBZ-CTAC-Dynamic"
@@ -68,7 +73,7 @@ show_fig_folder = os.path.join(wd, "show-fig")
 # note that direct save the 4D image to nii file will cause the image orientation inconsistent with raw dicom image (do not know why)
 # have try pkg: pydicom, dcm2niix, SimpleITK all failed
 dicom_folder = r"E:\ChenLab\RawData\NHP\Image\M6\200169-M6_postop_PET_20250614\200169\20250614002251\1861"
-pet_basename = r"M6-Postop-PET-DTBZ-CTAC-Dynamic"
+
 output_base = os.path.join(raw_folder, pet_basename)
 dicom4_to_nifti3(dicom_folder, output_base)
 
@@ -176,7 +181,7 @@ ref.plot_tac('feng_srtm', tac_ref_folder)
 
 #%%
 # choose the best interpolation method!
-input_ref = ref.inputf1_feng_srtm
+input_ref = ref.inputf1_exp_am
 
 #%% Read the ROI mask file
 roi_file = os.path.join(resample_folder, r'PutamenRmask.nii.gz')
@@ -221,7 +226,7 @@ li.mrtm_linear_phase(input_roi, input_ref, t, t_trunc=(200, np.inf), save_dir=li
 
 
 #%% set the start and end time of the linear phase of the Logan plot
-start_l = 1000
+start_l = 1200
 end_l = None
 
 start_l2 = 1000
@@ -410,10 +415,10 @@ li.mrtm_k2p_linear_phase(input_roi, input_ref, t, k2p, t_trunc=(200, np.inf), sa
 
 #%% set the start and end time of the linear phase of the Logan plot
 
-start_l2 = 700
+start_l2 = 1200
 end_l2 = None
 
-start_m2 = 800
+start_m2 = 1200
 end_m2 = None
 
 #%% basis functions
@@ -565,21 +570,25 @@ save_base = os.path.join(show_fig_folder, os.path.basename(img_bp_file.split('.'
 img_data_mask, crop_indices = vol_crop(img_data_mask)
 img_bp_data = img_bp_data[crop_indices]
 
+
+
+barlim = (0, 2.5) # set the color bar limit for visualization
+
 # Visualize and save an axial slice (slice 50)
 # nslice =[15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65]
 nslice =np.arange(0, img_data_mask.shape[2], 5) # every 5 slices
 for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='ax', mask=img_data_mask, 
-            barlim=(0,6), colormap='viridis', save_base=save_base)
+            barlim=barlim, colormap='viridis', save_base=save_base)
     
 nslice = np.arange(0, img_data_mask.shape[1], 5) # every 5 slices
 for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='cor', mask=img_data_mask,
-            barlim=(0,6), colormap='viridis', save_base=save_base)
+            barlim=barlim, colormap='viridis', save_base=save_base)
     
 nslice = np.arange(0, img_data_mask.shape[0], 5) # every 5 slices
 for i in nslice:
     vol_heatmap(img_bp_data, nslice=i, orient='sag', mask=img_data_mask,
-            barlim=(0,6), colormap='viridis', save_base=save_base)
+            barlim=barlim, colormap='viridis', save_base=save_base)
 
 # %%
